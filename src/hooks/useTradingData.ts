@@ -7,55 +7,70 @@ const initialCoins: CoinData[] = [
     id: 'ardentia-gold',
     symbol: 'AGC',
     name: 'Ardentia Gold Coin',
-    price: 1000,
-    change24h: 2.5,
-    volume: 50000,
-    marketCap: 1000000,
-    icon: '🪙',
+    current_price: 1000,
+    price_change_24h: 25,
+    price_change_percentage_24h: 2.5,
+    volume_24h: 50000,
+    market_cap: 1000000,
+    high_24h: 1050,
+    low_24h: 950,
+    image: '🪙',
     rarity: 'legendary'
   },
   {
     id: 'ardentia-diamond',
     symbol: 'ADC',
     name: 'Ardentia Diamond Coin',
-    price: 2500,
-    change24h: -1.2,
-    volume: 30000,
-    marketCap: 750000,
-    icon: '💎',
+    current_price: 2500,
+    price_change_24h: -30,
+    price_change_percentage_24h: -1.2,
+    volume_24h: 30000,
+    market_cap: 750000,
+    high_24h: 2600,
+    low_24h: 2400,
+    image: '💎',
     rarity: 'epic'
   },
   {
     id: 'ardentia-emerald',
     symbol: 'AEC',
     name: 'Ardentia Emerald Coin',
-    price: 1500,
-    change24h: 5.8,
-    volume: 25000,
-    marketCap: 500000,
-    icon: '💚',
+    current_price: 1500,
+    price_change_24h: 87,
+    price_change_percentage_24h: 5.8,
+    volume_24h: 25000,
+    market_cap: 500000,
+    high_24h: 1600,
+    low_24h: 1400,
+    image: '💚',
     rarity: 'rare'
   },
   {
     id: 'ardentia-iron',
     symbol: 'AIC',
     name: 'Ardentia Iron Coin',
-    price: 500,
-    change24h: 3.4,
-    volume: 75000,
-    marketCap: 2000000,
-    icon: '⚙️',
+    current_price: 500,
+    price_change_24h: 17,
+    price_change_percentage_24h: 3.4,
+    volume_24h: 75000,
+    market_cap: 2000000,
+    high_24h: 520,
+    low_24h: 480,
+    image: '⚙️',
     rarity: 'common'
   },
   {
     id: 'ardentia-redstone',
     symbol: 'ARC',
     name: 'Ardentia Redstone Coin',
-    price: 750,
-    change24h: -2.1,
-    volume: 40000,
-    marketCap: 600000,
-    icon: '🔴',
+    current_price: 750,
+    price_change_24h: -16,
+    price_change_percentage_24h: -2.1,
+    volume_24h: 40000,
+    market_cap: 600000,
+    high_24h: 780,
+    low_24h: 720,
+    image: '🔴',
     rarity: 'rare'
   }
 ];
@@ -99,16 +114,19 @@ export const useTradingData = () => {
   const user: User = {
     id: '1',
     username: 'ArdenPlayer',
+    email: 'player@ardentia.com',
     balance: 50000,
     role: 'admin',
-    rank: 'Server Owner'
+    rank: 'Server Owner',
+    createdAt: Date.now() - 86400000,
+    lastLogin: Date.now()
   };
 
   // Initialize chart data
   useEffect(() => {
     const data: { [key: string]: ChartData[] } = {};
     coins.forEach(coin => {
-      data[coin.id] = generateChartData(coin.price);
+      data[coin.id] = generateChartData(coin.current_price);
     });
     setChartData(data);
   }, []);
@@ -119,13 +137,16 @@ export const useTradingData = () => {
       setCoins(prevCoins => 
         prevCoins.map(coin => {
           const change = (Math.random() - 0.5) * 0.01; // ±1% change
-          const newPrice = Math.max(1, Math.round(coin.price * (1 + change)));
-          const change24h = change * 100;
+          const newPrice = Math.max(1, Math.round(coin.current_price * (1 + change)));
+          const priceChange24h = change * 100;
           
           return {
             ...coin,
-            price: newPrice,
-            change24h: coin.change24h + change24h * 0.1
+            current_price: newPrice,
+            price_change_24h: newPrice - coin.current_price,
+            price_change_percentage_24h: coin.price_change_percentage_24h + priceChange24h * 0.1,
+            high_24h: Math.max(coin.high_24h, newPrice),
+            low_24h: Math.min(coin.low_24h, newPrice)
           };
         })
       );
@@ -138,7 +159,14 @@ export const useTradingData = () => {
     setCoins(prevCoins =>
       prevCoins.map(coin =>
         coin.id === coinId
-          ? { ...coin, price: newPrice, change24h: changePercent }
+          ? { 
+              ...coin, 
+              current_price: newPrice, 
+              price_change_percentage_24h: changePercent,
+              price_change_24h: newPrice - coin.current_price,
+              high_24h: Math.max(coin.high_24h, newPrice),
+              low_24h: Math.min(coin.low_24h, newPrice)
+            }
           : coin
       )
     );
@@ -213,7 +241,7 @@ export const useTradingData = () => {
       // Update current values and P&L
       const currentCoin = coins.find(c => c.symbol === coin);
       if (currentCoin && holdings[coin].amount > 0) {
-        holdings[coin].value = Math.round(holdings[coin].amount * currentCoin.price);
+        holdings[coin].value = Math.round(holdings[coin].amount * currentCoin.current_price);
         holdings[coin].pnl = holdings[coin].value - Math.round(holdings[coin].amount * holdings[coin].averagePrice);
         holdings[coin].pnlPercent = (holdings[coin].pnl / (holdings[coin].amount * holdings[coin].averagePrice)) * 100;
       }

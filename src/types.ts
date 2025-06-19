@@ -50,6 +50,7 @@ export interface CoinData {
   high_24h: number;
   low_24h: number;
   image: string;
+  rarity?: string;
 }
 
 export interface DepositRequest {
@@ -101,4 +102,39 @@ export interface TradingPair {
   volume24h: number;
   high24h: number;
   low24h: number;
+}
+
+// Additional interfaces for backward compatibility
+export interface ChartData {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface Order {
+  id: string;
+  coin: string;
+  type: 'buy' | 'sell';
+  amount: number;
+  price: number;
+  timestamp: number;
+  status: 'pending' | 'completed' | 'cancelled';
+}
+
+export interface Portfolio {
+  totalValue: number;
+  totalPnL: number;
+  totalPnLPercent: number;
+  holdings: {
+    [symbol: string]: {
+      amount: number;
+      value: number;
+      averagePrice: number;
+      pnl: number;
+      pnlPercent: number;
+    };
+  };
 }
