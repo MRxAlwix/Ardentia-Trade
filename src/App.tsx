@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { User } from './types';
 import { authService } from './services/authService';
-import { Header } from './components/Header';
+import { Header, ViewType } from './components/Header';
 import { LoginForm } from './components/Auth/LoginForm';
 import { RegisterForm } from './components/Auth/RegisterForm';
 import { TradingDashboard } from './components/Trading/TradingDashboard';
-import { AdminPanel } from './components/AdminPanel';
 import { DepositPage } from './components/Member/DepositPage';
+import { DepositManagement } from './components/Admin/DepositManagement';
+import { TradingSettings } from './components/Admin/TradingSettings';
 import { useTradingData } from './hooks/useTradingData';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<'login' | 'register' | 'trading' | 'admin' | 'deposit'>('login');
-  const { coins, loading: coinsLoading } = useTradingData();
+  const [currentView, setCurrentView] = useState<ViewType | 'login' | 'register'>('login');
+  const { coins, loading: coinsLoading, updateCoinPrice } = useTradingData();
 
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChange((user) => {
@@ -49,8 +50,13 @@ function App() {
     }
   };
 
-  const handleViewChange = (view: 'trading' | 'admin' | 'deposit') => {
+  const handleViewChange = (view: ViewType) => {
     setCurrentView(view);
+  };
+
+  const handleGlobalPriceUpdate = (newPrice: number) => {
+    // Update the price for AGC (Ardentia Gold Coin) as an example
+    updateCoinPrice('AGC', newPrice);
   };
 
   if (loading) {
@@ -112,7 +118,7 @@ function App() {
       <Header 
         user={user} 
         onLogout={handleLogout}
-        currentView={currentView}
+        currentView={currentView as ViewType}
         onViewChange={handleViewChange}
       />
       
@@ -133,12 +139,16 @@ function App() {
           </div>
         )}
         
-        {currentView === 'admin' && user.role === 'admin' && (
-          <AdminPanel user={user} />
-        )}
-        
         {currentView === 'deposit' && (
           <DepositPage user={user} />
+        )}
+        
+        {currentView === 'admin-deposits' && user.role === 'admin' && (
+          <DepositManagement />
+        )}
+        
+        {currentView === 'admin-settings' && user.role === 'admin' && (
+          <TradingSettings onPriceUpdate={handleGlobalPriceUpdate} />
         )}
       </main>
     </div>

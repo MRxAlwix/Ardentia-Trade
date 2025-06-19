@@ -2,21 +2,21 @@ import React from 'react';
 import { Pickaxe, LogOut, Coins, Settings, Users, BarChart3 } from 'lucide-react';
 import { User } from '../types';
 
-type Page = 'trading' | 'deposit' | 'admin-deposits' | 'admin-settings';
+export type ViewType = 'trading' | 'deposit' | 'admin-deposits' | 'admin-settings';
 
 interface HeaderProps {
   user: User;
-  currentPage: Page;
-  onPageChange: (page: Page) => void;
+  currentView: ViewType;
+  onViewChange: (view: ViewType) => void;
   onLogout: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ user, currentPage, onPageChange, onLogout }) => {
+export const Header: React.FC<HeaderProps> = ({ user, currentView, onViewChange, onLogout }) => {
   const navItems = [
-    { id: 'trading' as Page, label: 'Trading', icon: BarChart3, forAll: true },
-    { id: 'deposit' as Page, label: 'Deposit', icon: Coins, forAll: true },
-    { id: 'admin-deposits' as Page, label: 'Manage Deposits', icon: Users, adminOnly: true },
-    { id: 'admin-settings' as Page, label: 'Settings', icon: Settings, adminOnly: true },
+    { id: 'trading' as ViewType, label: 'Trading', icon: BarChart3, forAll: true },
+    { id: 'deposit' as ViewType, label: 'Deposit', icon: Coins, forAll: true },
+    { id: 'admin-deposits' as ViewType, label: 'Manage Deposits', icon: Users, adminOnly: true },
+    { id: 'admin-settings' as ViewType, label: 'Settings', icon: Settings, adminOnly: true },
   ];
 
   const visibleNavItems = navItems.filter(item => 
@@ -42,9 +42,9 @@ export const Header: React.FC<HeaderProps> = ({ user, currentPage, onPageChange,
             return (
               <button
                 key={item.id}
-                onClick={() => onPageChange(item.id)}
+                onClick={() => onViewChange(item.id)}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
-                  currentPage === item.id
+                  currentView === item.id
                     ? 'bg-amber-600 text-white border-amber-500 shadow-md'
                     : 'bg-stone-700 text-amber-300 hover:bg-stone-600 border-amber-600/30'
                 }`}
@@ -90,9 +90,9 @@ export const Header: React.FC<HeaderProps> = ({ user, currentPage, onPageChange,
           return (
             <button
               key={item.id}
-              onClick={() => onPageChange(item.id)}
+              onClick={() => onViewChange(item.id)}
               className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 border whitespace-nowrap ${
-                currentPage === item.id
+                currentView === item.id
                   ? 'bg-amber-600 text-white border-amber-500'
                   : 'bg-stone-700 text-amber-300 hover:bg-stone-600 border-amber-600/30'
               }`}
