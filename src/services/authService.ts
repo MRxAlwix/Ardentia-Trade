@@ -3,7 +3,8 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  User as FirebaseUser
+  User as FirebaseUser,
+  updateProfile
 } from 'firebase/auth';
 import { 
   doc, 
@@ -18,11 +19,34 @@ import { User } from '../types';
 const ADMIN_KEY = 'ARDENTIA_ADMIN_2024_SECURE_KEY';
 
 export const authService = {
-  // Register new user
+  // Register new user with improved error handling
   async register(email: string, password: string, username: string, adminKey?: string): Promise<User> {
     try {
+      // Validate inputs
+      if (!email || !password || !username) {
+        throw new Error('All fields are required');
+      }
+
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters long');
+      }
+
+      if (username.length < 3) {
+        throw new Error('Username must be at least 3 characters long');
+      }
+
+      // Check if username contains only valid characters
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        throw new Error('Username can only contain letters, numbers, and underscores');
+      }
+
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
+      
+      // Update Firebase Auth profile
+      await updateProfile(firebaseUser, {
+        displayName: username
+      });
       
       const role = adminKey === ADMIN_KEY ? 'admin' : 'player';
       const rank = role === 'admin' ? 'Server Owner' : 'Member';
@@ -41,30 +65,64 @@ export const authService = {
       await setDoc(doc(db, 'users', firebaseUser.uid), userData);
       return userData;
     } catch (error: any) {
-      throw new Error(error.message);
+      console.error('Registration error:', error);
+      
+      // Provide user-friendly error messages
+      if (error.code === 'auth/email-already-in-use') {
+        throw new Error('This email is already registered');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Please enter a valid email address');
+      } else if (error.code === 'auth/weak-password') {
+        throw new Error('Password is too weak. Please choose a stronger password');
+      } else if (error.code === 'auth/network-request-failed') {
+        throw new Error('Network error. Please check your connection');
+      }
+      
+      throw new Error(error.message || 'Registration failed');
     }
   },
 
-  // Login user
+  // Login user with improved error handling
   async login(email: string, password: string): Promise<User> {
     try {
+      if (!email || !password) {
+        throw new Error('Email and password are required');
+      }
+
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
       
+      // Get user data
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      if (!userDoc.exists()) {
+        throw new Error('User profile not found. Please contact support');
+      }
+
+      const userData = userDoc.data() as User;
+
       // Update last login
       await updateDoc(doc(db, 'users', firebaseUser.uid), {
         lastLogin: Date.now()
       });
 
-      // Get user data
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-      if (!userDoc.exists()) {
-        throw new Error('User data not found');
-      }
-
-      return userDoc.data() as User;
+      return { ...userData, lastLogin: Date.now() };
     } catch (error: any) {
-      throw new Error(error.message);
+      console.error('Login error:', error);
+      
+      // Provide user-friendly error messages
+      if (error.code === 'auth/user-not-found') {
+        throw new Error('No account found with this email');
+      } else if (error.code === 'auth/wrong-password') {
+        throw new Error('Incorrect password');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Please enter a valid email address');
+      } else if (error.code === 'auth/too-many-requests') {
+        throw new Error('Too many failed attempts. Please try again later');
+      } else if (error.code === 'auth/network-request-failed') {
+        throw new Error('Network error. Please check your connection');
+      }
+      
+      throw new Error(error.message || 'Login failed');
     }
   },
 
@@ -73,34 +131,58 @@ export const authService = {
     try {
       await signOut(auth);
     } catch (error: any) {
-      throw new Error(error.message);
+      console.error('Logout error:', error);
+      throw new Error('Logout failed');
     }
   },
 
   // Get current user data
   async getCurrentUser(): Promise<User | null> {
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) return null;
+    try {
+      const firebaseUser = auth.currentUser;
+      if (!firebaseUser) return null;
 
-    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-    if (!userDoc.exists()) return null;
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      if (!userDoc.exists()) return null;
 
-    return userDoc.data() as User;
+      return userDoc.data() as User;
+    } catch (error) {
+      console.error('Error getting current user:', error);
+      return null;
+    }
   },
 
-  // Listen to auth state changes
+  // Listen to auth state changes with better error handling
   onAuthStateChange(callback: (user: User | null) => void) {
     return onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          callback(userDoc.data() as User);
+      try {
+        if (firebaseUser) {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            callback(userDoc.data() as User);
+          } else {
+            console.error('User document not found');
+            callback(null);
+          }
         } else {
           callback(null);
         }
-      } else {
+      } catch (error) {
+        console.error('Auth state change error:', error);
         callback(null);
       }
     });
+  },
+
+  // Update user balance (for internal use)
+  async updateUserBalance(userId: string, newBalance: number): Promise<void> {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        balance: newBalance
+      });
+    } catch (error) {
+      console.error('Error updating user balance:', error);
+      throw new Error('Failed to update balance');
+    }
   }
 };

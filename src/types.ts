@@ -24,6 +24,7 @@ export interface Position {
   status: 'open' | 'closed';
   openTime: number;
   closeTime?: number;
+  liquidated?: boolean;
 }
 
 export interface ChartData {
@@ -71,4 +72,22 @@ export interface Announcement {
   createdAt: number;
   createdBy: string;
   active: boolean;
+}
+
+export interface TradingStats {
+  totalTrades: number;
+  winRate: number;
+  totalPnL: number;
+  bestTrade: number;
+  worstTrade: number;
+  averageHoldTime: number;
+}
+
+export interface MarketData {
+  price: number;
+  change24h: number;
+  volume24h: number;
+  high24h: number;
+  low24h: number;
+  marketCap: number;
 }
