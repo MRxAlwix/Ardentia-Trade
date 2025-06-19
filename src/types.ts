@@ -3,16 +3,27 @@ export interface User {
   username: string;
   email: string;
   balance: number;
-  role: 'player' | 'admin';
+  role: 'admin' | 'player';
   rank: string;
   createdAt: number;
   lastLogin: number;
-  discordId?: string;
+}
+
+export interface Trade {
+  id: string;
+  userId: string;
+  symbol: string;
+  type: 'buy' | 'sell';
+  amount: number;
+  price: number;
+  timestamp: number;
+  status: 'pending' | 'completed' | 'cancelled';
 }
 
 export interface Position {
   id: string;
   userId: string;
+  symbol: string;
   type: 'long' | 'short';
   amount: number;
   entryPrice: number;
@@ -20,14 +31,59 @@ export interface Position {
   leverage: number;
   margin: number;
   pnl: number;
-  pnlPercent: number;
+  pnlPercentage: number;
+  timestamp: number;
   status: 'open' | 'closed';
-  openTime: number;
-  closeTime?: number;
-  liquidated?: boolean;
+  stopLoss?: number;
+  takeProfit?: number;
 }
 
-export interface ChartData {
+export interface CoinData {
+  id: string;
+  symbol: string;
+  name: string;
+  current_price: number;
+  price_change_24h: number;
+  price_change_percentage_24h: number;
+  market_cap: number;
+  volume_24h: number;
+  high_24h: number;
+  low_24h: number;
+  image: string;
+}
+
+export interface DepositRequest {
+  id: string;
+  userId: string;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected';
+  timestamp: number;
+  proofImage?: string;
+  adminNotes?: string;
+}
+
+export interface TradingSettings {
+  minTradeAmount: number;
+  maxTradeAmount: number;
+  tradingFee: number;
+  maintenanceMode: boolean;
+  allowedSymbols: string[];
+  maxLeverage: number;
+  marginRequirement: number;
+}
+
+export interface OrderBookEntry {
+  price: number;
+  amount: number;
+  total: number;
+}
+
+export interface OrderBook {
+  bids: OrderBookEntry[];
+  asks: OrderBookEntry[];
+}
+
+export interface CandlestickData {
   timestamp: number;
   open: number;
   high: number;
@@ -36,58 +92,13 @@ export interface ChartData {
   volume: number;
 }
 
-export interface DepositRequest {
-  id: string;
-  userId: string;
-  username: string;
-  amount: number;
-  method: 'discord' | 'manual';
-  status: 'pending' | 'approved' | 'rejected';
-  proof?: string;
-  discordMessageId?: string;
-  createdAt: number;
-  processedAt?: number;
-  processedBy?: string;
-  notes?: string;
-}
-
-export interface TradingSettings {
-  spread: number;
-  maxLeverage: number;
-  minTradeAmount: number;
-  tradingFee: number;
-  priceUpdateInterval: number;
-  volatilitySettings: {
-    baseVolatility: number;
-    trendStrength: number;
-    randomFactor: number;
-  };
-}
-
-export interface Announcement {
-  id: string;
-  title: string;
-  message: string;
-  type: 'info' | 'warning' | 'success' | 'error';
-  createdAt: number;
-  createdBy: string;
-  active: boolean;
-}
-
-export interface TradingStats {
-  totalTrades: number;
-  winRate: number;
-  totalPnL: number;
-  bestTrade: number;
-  worstTrade: number;
-  averageHoldTime: number;
-}
-
-export interface MarketData {
+export interface TradingPair {
+  symbol: string;
+  baseAsset: string;
+  quoteAsset: string;
   price: number;
   change24h: number;
   volume24h: number;
   high24h: number;
   low24h: number;
-  marketCap: number;
 }

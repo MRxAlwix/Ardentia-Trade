@@ -1,229 +1,146 @@
 import React, { useState, useEffect } from 'react';
+import { User } from './types';
+import { authService } from './services/authService';
+import { Header } from './components/Header';
 import { LoginForm } from './components/Auth/LoginForm';
 import { RegisterForm } from './components/Auth/RegisterForm';
-import { Header } from './components/Header';
+import { TradingDashboard } from './components/Trading/TradingDashboard';
+import { AdminPanel } from './components/AdminPanel';
 import { DepositPage } from './components/Member/DepositPage';
-import { DepositManagement } from './components/Admin/DepositManagement';
-import { TradingInterface } from './components/Trading/TradingInterface';
-import { TradingSettings } from './components/Admin/TradingSettings';
-import { authService } from './services/authService';
-import { tradingService } from './services/tradingService';
-import { User, ChartData } from './types';
-
-type Page = 'trading' | 'deposit' | 'admin-deposits' | 'admin-settings';
+import { useTradingData } from './hooks/useTradingData';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [currentPage, setCurrentPage] = useState<Page>('trading');
-  
-  // Trading data
-  const [currentPrice, setCurrentPrice] = useState(10000);
-  const [chartData, setChartData] = useState<ChartData[]>([]);
-  const [timeframe, setTimeframe] = useState<'1h' | '4h' | '1d' | '1w'>('1h');
+  const [currentView, setCurrentView] = useState<'login' | 'register' | 'trading' | 'admin' | 'deposit'>('login');
+  const { coins, loading: coinsLoading } = useTradingData();
 
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChange((user) => {
       setUser(user);
       setLoading(false);
+      if (user) {
+        setCurrentView('trading');
+      } else {
+        setCurrentView('login');
+      }
     });
 
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    // Initialize chart data
-    generateInitialChartData();
-    
-    // Start price simulation with more realistic intervals
-    const interval = setInterval(() => {
-      updatePrice();
-    }, 8000); // Update every 8 seconds
-
-    return () => clearInterval(interval);
-  }, [timeframe]);
-
-  const generateInitialChartData = () => {
-    const data = tradingService.generateChartData(10000, timeframe, 100);
-    setChartData(data);
-    
-    // Set current price to the last candle's close price
-    if (data.length > 0) {
-      setCurrentPrice(data[data.length - 1].close);
-    }
+  const handleLogin = (userData: User) => {
+    setUser(userData);
+    setCurrentView('trading');
   };
 
-  const updatePrice = () => {
-    setCurrentPrice(prevPrice => {
-      // More realistic price movement
-      const volatility = 0.008; // 0.8% max change
-      const trend = Math.sin(Date.now() / 100000) * 0.002; // Subtle trend
-      const noise = (Math.random() - 0.5) * volatility;
-      const change = trend + noise;
-      
-      const newPrice = Math.max(1000, Math.round(prevPrice * (1 + change)));
-      
-      // Update chart data
-      setChartData(prevData => {
-        if (prevData.length === 0) return prevData;
-        
-        const lastCandle = prevData[prevData.length - 1];
-        const now = Date.now();
-        
-        // Check if we need a new candle based on timeframe
-        const timeframes = {
-          '1h': 3600000,
-          '4h': 14400000,
-          '1d': 86400000,
-          '1w': 604800000
-        };
-        
-        const shouldCreateNewCandle = now - lastCandle.timestamp > timeframes[timeframe];
-        
-        if (shouldCreateNewCandle) {
-          // Create new candle
-          const newCandle: ChartData = {
-            timestamp: now,
-            open: lastCandle.close,
-            high: Math.max(lastCandle.close, newPrice),
-            low: Math.min(lastCandle.close, newPrice),
-            close: newPrice,
-            volume: Math.random() * 10000 + 1000
-          };
-          
-          return [...prevData.slice(-99), newCandle]; // Keep last 100 candles
-        } else {
-          // Update current candle
-          const updatedCandle: ChartData = {
-            ...lastCandle,
-            high: Math.max(lastCandle.high, newPrice),
-            low: Math.min(lastCandle.low, newPrice),
-            close: newPrice,
-            volume: lastCandle.volume + Math.random() * 100
-          };
-          
-          return [...prevData.slice(0, -1), updatedCandle];
-        }
-      });
-      
-      return newPrice;
-    });
-  };
-
-  const handlePriceUpdate = (change: number, type: 'percentage' | 'absolute') => {
-    setCurrentPrice(prevPrice => {
-      let newPrice: number;
-      
-      if (type === 'percentage') {
-        newPrice = prevPrice * (1 + change / 100);
-      } else {
-        newPrice = prevPrice + change;
-      }
-      
-      newPrice = Math.max(1000, Math.round(newPrice));
-      
-      // Update chart data immediately
-      setChartData(prevData => {
-        if (prevData.length === 0) return prevData;
-        
-        const lastCandle = prevData[prevData.length - 1];
-        const updatedCandle: ChartData = {
-          ...lastCandle,
-          close: newPrice,
-          high: Math.max(lastCandle.high, newPrice),
-          low: Math.min(lastCandle.low, newPrice),
-          timestamp: Date.now()
-        };
-        
-        return [...prevData.slice(0, -1), updatedCandle];
-      });
-      
-      return newPrice;
-    });
+  const handleRegister = (userData: User) => {
+    setUser(userData);
+    setCurrentView('trading');
   };
 
   const handleLogout = async () => {
     try {
       await authService.logout();
-      setCurrentPage('trading');
+      setUser(null);
+      setCurrentView('login');
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Logout error:', error);
     }
+  };
+
+  const handleViewChange = (view: 'trading' | 'admin' | 'deposit') => {
+    setCurrentView(view);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-stone-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400 mx-auto mb-4"></div>
-          <div className="text-amber-400 text-xl font-mono">Loading Ardentia Exchange...</div>
-          <div className="text-amber-500 text-sm mt-2">Connecting to Minecraft Community Trading</div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading Ardentia Exchange...</p>
         </div>
       </div>
     );
   }
 
   if (!user) {
-    return authMode === 'login' ? (
-      <LoginForm 
-        onSuccess={() => setLoading(false)}
-        onSwitchToRegister={() => setAuthMode('register')}
-      />
-    ) : (
-      <RegisterForm 
-        onSuccess={() => setLoading(false)}
-        onSwitchToLogin={() => setAuthMode('login')}
-      />
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-md w-full">
+            <div className="text-center mb-8">
+              <h1 className="text-4xl font-bold text-white mb-2">Ardentia Exchange</h1>
+              <p className="text-blue-200">Professional Cryptocurrency Trading Platform</p>
+            </div>
+            
+            {currentView === 'login' ? (
+              <div>
+                <LoginForm onLogin={handleLogin} />
+                <p className="text-center mt-4 text-blue-200">
+                  Don't have an account?{' '}
+                  <button
+                    onClick={() => setCurrentView('register')}
+                    className="text-white font-medium hover:underline"
+                  >
+                    Sign up
+                  </button>
+                </p>
+              </div>
+            ) : (
+              <div>
+                <RegisterForm onRegister={handleRegister} />
+                <p className="text-center mt-4 text-blue-200">
+                  Already have an account?{' '}
+                  <button
+                    onClick={() => setCurrentView('login')}
+                    className="text-white font-medium hover:underline"
+                  >
+                    Sign in
+                  </button>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     );
   }
 
-  const renderCurrentPage = () => {
-    switch (currentPage) {
-      case 'trading':
-        return (
-          <TradingInterface
-            user={user}
-            currentPrice={currentPrice}
-            chartData={chartData}
-            onPriceUpdate={handlePriceUpdate}
-          />
-        );
-      case 'deposit':
-        return <DepositPage user={user} />;
-      case 'admin-deposits':
-        return user.role === 'admin' ? <DepositManagement /> : (
-          <div className="text-center py-12">
-            <p className="text-red-400 text-xl">Access Denied</p>
-            <p className="text-amber-400">Admin privileges required</p>
-          </div>
-        );
-      case 'admin-settings':
-        return user.role === 'admin' ? (
-          <TradingSettings onPriceUpdate={handlePriceUpdate} />
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-red-400 text-xl">Access Denied</p>
-            <p className="text-amber-400">Admin privileges required</p>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-stone-900">
+    <div className="min-h-screen bg-gray-100">
       <Header 
-        user={user}
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
+        user={user} 
         onLogout={handleLogout}
+        currentView={currentView}
+        onViewChange={handleViewChange}
       />
       
-      <div className="max-w-7xl mx-auto p-4">
-        {renderCurrentPage()}
-      </div>
+      <main className="container mx-auto px-4 py-8">
+        {currentView === 'trading' && (
+          <div>
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Trading Dashboard</h1>
+              <p className="text-gray-600">Welcome back, {user.username}! Start trading with advanced tools.</p>
+            </div>
+            {coinsLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              </div>
+            ) : (
+              <TradingDashboard coins={coins} user={user} />
+            )}
+          </div>
+        )}
+        
+        {currentView === 'admin' && user.role === 'admin' && (
+          <AdminPanel user={user} />
+        )}
+        
+        {currentView === 'deposit' && (
+          <DepositPage user={user} />
+        )}
+      </main>
     </div>
   );
 }

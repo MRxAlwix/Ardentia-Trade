@@ -95,7 +95,20 @@ export const authService = {
       // Get user data
       const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
       if (!userDoc.exists()) {
-        throw new Error('User profile not found. Please contact support');
+        // Create default user document if it doesn't exist
+        const defaultUserData: User = {
+          id: firebaseUser.uid,
+          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          email: firebaseUser.email || '',
+          balance: 10000,
+          role: 'player',
+          rank: 'Member',
+          createdAt: Date.now(),
+          lastLogin: Date.now()
+        };
+        
+        await setDoc(doc(db, 'users', firebaseUser.uid), defaultUserData);
+        return defaultUserData;
       }
 
       const userData = userDoc.data() as User;
@@ -143,7 +156,22 @@ export const authService = {
       if (!firebaseUser) return null;
 
       const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-      if (!userDoc.exists()) return null;
+      if (!userDoc.exists()) {
+        // Create default user document if it doesn't exist
+        const defaultUserData: User = {
+          id: firebaseUser.uid,
+          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          email: firebaseUser.email || '',
+          balance: 10000,
+          role: 'player',
+          rank: 'Member',
+          createdAt: Date.now(),
+          lastLogin: Date.now()
+        };
+        
+        await setDoc(doc(db, 'users', firebaseUser.uid), defaultUserData);
+        return defaultUserData;
+      }
 
       return userDoc.data() as User;
     } catch (error) {
@@ -161,8 +189,21 @@ export const authService = {
           if (userDoc.exists()) {
             callback(userDoc.data() as User);
           } else {
-            console.error('User document not found');
-            callback(null);
+            // Create default user document if it doesn't exist
+            console.log('Creating default user document for authenticated user');
+            const defaultUserData: User = {
+              id: firebaseUser.uid,
+              username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              email: firebaseUser.email || '',
+              balance: 10000,
+              role: 'player',
+              rank: 'Member',
+              createdAt: Date.now(),
+              lastLogin: Date.now()
+            };
+            
+            await setDoc(doc(db, 'users', firebaseUser.uid), defaultUserData);
+            callback(defaultUserData);
           }
         } else {
           callback(null);
